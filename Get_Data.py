@@ -39,7 +39,7 @@ cur.execute('''CREATE TABLE IF NOT EXISTS Zip_code (
             id INTEGER PRIMARY KEY, zip_ INTEGER UNIQUE )''')
 
 cur.execute('''CREATE TABLE IF NOT EXISTS Links (
-            hosp_id INTEGER PRIMARY KEY, state_id INTEGER, pay_id INTEGER, val_id INTEGER)''')
+            hosp_id INTEGER PRIMARY KEY, state_id INTEGER, pay_id INTEGER, val_id INTEGER, zip_id INTEGER)''')
 
 
 #base url for the json data on heart attack payment
@@ -78,7 +78,6 @@ for data in url_json['data']:
     lon_dat = data[30][2]
     #iteration counter to enable db commit to disk every 50 rows
     counter += 1
-    print(counter)
 
     cur.execute('''INSERT OR IGNORE INTO  Hospital_data
                 (hospital_name, city, county, denominator, payment, lower_est, higher_est, lat, lon) VALUES (?,?,?,?,?,?,?,?,?)''',
@@ -88,6 +87,28 @@ for data in url_json['data']:
     cur.execute('INSERT OR IGNORE INTO Value_of_care (value_category) VALUES (?)', (value_care_dat,))
     cur.execute('INSERT OR IGNORE INTO Zip_code (zip_) VALUES (?)', (zip_dat,))
 
+    '''Below accessing all the input record ids to construst links table when want to acess complete row info for a hopistal_Data entry'''
+#    try:
+    cur.execute('SELECT id FROM Hospital_data WHERE hospital_name=? AND city=?',(hosp_name_dat, city_dat)) #understand the limit 1 is superfluous if the entry is truly unique
+    hosp_id_dat = cur.fetchone()[0]
+
+    cur.execute('SELECT id FROM State WHERE state_code=?',(state_dat,))
+    state_id_dat = cur.fetchone()[0]
+
+    cur.execute('SELECT id FROM Payment_category WHERE category=?',(pay_cat_dat,))
+    pay_id_dat = cur.fetchone()[0]
+
+    cur.execute('SELECT id FROM Value_of_care WHERE value_category=?',(value_care_dat,))
+    val_id_dat = cur.fetchone()[0]
+
+    cur.execute('SELECT id FROM Zip_code WHERE zip_=?',(zip_dat,))
+    zip_id_dat = cur.fetchone()[0]
+    #insert all ids into linker table to join on
+    cur.execute('''INSERT OR IGNORE INTO Links
+    (hosp_id, state_id, pay_id, val_id, zip_id) VALUES (?, ?, ?, ?, ?)''',
+    (hosp_id_dat, state_id_dat, pay_id_dat, val_id_dat, zip_id_dat))
+    # except:
+    #     print('Error selecting table ids for'.format(hosp_name_dat))
     # commit cached data to disk every 50 row reads
     if counter % 50 == 0:
         print('{} records committed thus far! Now on state {}'.format(counter, state_dat))
