@@ -8,8 +8,8 @@ cur = conn.cursor()
 cur.executescript('''
 DROP TABLE IF EXISTS Hospital_data;
 DROP TABLE IF EXISTS State;
-DROP TABLE IF EXISTS Payment_cat;
-DROP TABLE IF EXISTS Value;
+DROP TABLE IF EXISTS Payment_category;
+DROP TABLE IF EXISTS Value_of_care;
 DROP TABLE IF EXISTS Zip_code;
 DROP TABLE IF EXISTS Links;
 ''')
@@ -20,21 +20,23 @@ for the graphic id like to create. However, want experience setting up something
 for experience'''
 
 cur.execute('''CREATE TABLE IF NOT EXISTS Hospital_data (
-            id INTEGER, hospital_name TEXT,
+            id INTEGER PRIMARY KEY, hospital_name TEXT,
             city TEXT, county TEXT, denominator TEXT, payment INTEGER,
             lower_est INTEGER, higher_est INTEGER, lat INTEGER, lon INTEGER)''')
 
 cur.execute('''CREATE TABLE IF NOT EXISTS State (
-            id INTEGER PRIMARY KEY , state_code TEXT)''')
+            id INTEGER PRIMARY KEY , state_code TEXT UNIQUE)''')
 
 cur.execute('''CREATE TABLE IF NOT EXISTS Payment_category (
-            id INTEGER PRIMARY KEY, category TEXT)''')
+            id INTEGER PRIMARY KEY, category TEXT UNIQUE)''')
 
 cur.execute('''CREATE TABLE IF NOT EXISTS Value_of_care (
-            id INTEGER PRIMARY KEY, val_category TEXT)''')
+            id INTEGER PRIMARY KEY, value_category TEXT UNIQUE)''')
 
+# Possbily change zip to an intger field, see how that will work when try to
+# make a graphic with it
 cur.execute('''CREATE TABLE IF NOT EXISTS Zip_code (
-            id INTEGER PRIMARY KEY, zip_ TEXT )''')
+            id INTEGER PRIMARY KEY, zip_ INTEGER UNIQUE )''')
 
 cur.execute('''CREATE TABLE IF NOT EXISTS Links (
             hosp_id INTEGER PRIMARY KEY, state_id INTEGER, pay_id INTEGER, val_id INTEGER)''')
@@ -47,7 +49,7 @@ get_url = requests.get(baseurl)
 
 url_json = get_url.json()
 
-count = 0
+counter = 0
 
 # the data being input into the DB are appended with _dat, to avoid confusion with
 # the similarly named databased fields
@@ -56,10 +58,11 @@ for data in url_json['data']:
     hosp_name_dat = data[9]
     city_dat = data[11]
     state_dat = data[12]
-    zip_dat = data[13]
+    # Possibly change this to an integer will see if allows graphic
+    zip_dat = int(data[13])
     county_dat = data[14]
-    pay_cat_dat = data[17]
-    value_care_dat = data[18]
+    pay_cat_dat = data[18]
+    value_care_dat = data[26]
     denom_dat = data[19]
     if len(re.sub('\D','',data[20])) <= 1:
         payment_dat = None
@@ -74,19 +77,22 @@ for data in url_json['data']:
     lat_dat = data[30][1]
     lon_dat = data[30][2]
     #iteration counter to enable db commit to disk every 50 rows
-    count =+ 1
+    counter += 1
+    print(counter)
 
     cur.execute('''INSERT OR IGNORE INTO  Hospital_data
                 (hospital_name, city, county, denominator, payment, lower_est, higher_est, lat, lon) VALUES (?,?,?,?,?,?,?,?,?)''',
                 (hosp_name_dat, city_dat, county_dat, denom_dat, payment_dat, lower_est_dat, higher_est_dat, lat_dat, lon_dat))
-    cur.execute('INSERT OR IGNORE INTO State (state_code) VALUES (?)', (state_dat))
-    cur.execute('INSERT OR IGNOTE INTO Payment_category (category) VALUES (?)', (pay_cat_dat))
-    cur.execute('INSERT OR IGNORE INTO Value_of_care (val_category) VALUES (?)', (value_care_dat))
-    cur.execute('INSERT OR IGNORE INTO Zip_code (zip_) VALUES (?)', (zip_dat))
+    cur.execute('INSERT OR IGNORE INTO State (state_code) VALUES (?)', (state_dat,))
+    cur.execute('INSERT OR IGNORE INTO Payment_category (category) VALUES (?)', (pay_cat_dat,))
+    cur.execute('INSERT OR IGNORE INTO Value_of_care (value_category) VALUES (?)', (value_care_dat,))
+    cur.execute('INSERT OR IGNORE INTO Zip_code (zip_) VALUES (?)', (zip_dat,))
 
     # commit cached data to disk every 50 row reads
     if counter % 50 == 0:
-        print('{} records committed thus far! Now on state {}'.format(counter, state_dat)))
-        con.commit()
+        print('{} records committed thus far! Now on state {}'.format(counter, state_dat))
+        conn.commit()
+
+print('Total records logged: {}'.format(counter))
 
 cur.close()
