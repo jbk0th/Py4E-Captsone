@@ -111,9 +111,45 @@ for data in url_json['data']:
     #     print('Error selecting table ids for'.format(hosp_name_dat))
     # commit cached data to disk every 50 row reads
     if counter % 50 == 0:
-        print('{} records committed thus far! Now on state {}'.format(counter, state_dat))
         conn.commit()
+        print('{} records committed thus far! Now on state {}'.format(counter, state_dat))
+conn.commit()
+print('{} records committed thus far! Now on state {}'.format(counter, state_dat))
 
 print('Total records logged: {}'.format(counter))
 
 cur.close()
+
+
+''' Examples of Many-to-Many Join query's for diagnostic purposes,
+IMPT Note: Start outer most then keep moving in with joins till have full row one would like.
+
+Following Examples tested in SQLite DB browser:
+
+# Joining Links table with Hospital_data table
+
+SELECT Hospital_data.*, Links.*
+-- Payment_category.category, State.state_code, Value_of_care.value_category, Zip_code.zip_
+FROM Hospital_data
+LEFT JOIN Links
+ON Hospital_data.id = Links.hosp_id
+LIMIT 5
+
+#result is full table with all linking ids present,
+
+--Next is full join from all tables
+SELECT Hospital_data.*, Links.*, Payment_category.category, State.state_code, Value_of_care.value_category, Zip_code.zip_
+-- Payment_category.category, State.state_code, Value_of_care.value_category, Zip_code.zip_
+FROM Hospital_data
+LEFT JOIN Links ON Hospital_data.id = Links.hosp_id
+-- first gets outermost Hospital_data into, the join the Links table so the other tables can be joined
+LEFT JOIN Payment_category ON Links.pay_id = Payment_category.id
+-- payment cateogry now joined, now 1 more work further in
+LEFT JOIN State ON Links.state_id = State.id
+--
+LEFT JOIN Value_of_care ON Links.val_id = Value_of_care.id
+--
+LEFT JOIN Zip_code ON Links.zip_id = Zip_code.zip_
+--
+LIMIT 5
+'''
